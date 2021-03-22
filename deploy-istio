@@ -1,0 +1,17 @@
+#!/bin/bash -eux
+set -o pipefail
+
+cat <<TMP | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+TMP
+
+while ! ./generate-istio | kubectl apply -f -; do
+  echo "hmmm, that didnt go so well.."
+done
+
+for name in $(kubectl get deployments -n istio-system -o name); do
+  kubectl rollout status ${name} -n istio-system --timeout 2m
+done

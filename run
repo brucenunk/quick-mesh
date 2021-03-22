@@ -1,0 +1,10 @@
+#!/bin/bash -eux
+set -o pipefail
+
+NAME=${1:-kind}
+
+./create-cluster ${NAME} \
+  && ./deploy-cert-manager \
+  && ./deploy-istio \
+  && ./deploy-gateway \
+  && ./deploy-nginx

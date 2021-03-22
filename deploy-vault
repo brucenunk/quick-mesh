@@ -1,0 +1,58 @@
+#!/bin/bash -eux
+
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault
+  namespace: vault
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: vault
+  name: vault
+  namespace: vault
+spec:
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      containers:
+        - name: vault
+          image: vault:1.6.2
+          env:
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: root
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+      terminationGracePeriodSeconds: 0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  ports:
+    - port: 8200
+      nodePort: 31391
+  selector:
+    app: vault
+  type: NodePort
+EOF
+
+
+kubectl rollout status deployment vault -n vault --timeout 2m

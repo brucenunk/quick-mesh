@@ -1,0 +1,20 @@
+#!/bin/bash -eux
+set -o pipefail
+
+TOK=root
+VAULT=http://localhost:8200
+
+# request certificate.
+TMP=$(mktemp)
+cat <<EOF > ${TMP}
+{
+}
+EOF
+
+curl \
+  --data "@${TMP}" \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/pki_int/issue/example \
+    | jq

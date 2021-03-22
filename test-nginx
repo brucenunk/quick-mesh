@@ -1,0 +1,21 @@
+#!/bin/bash -eu
+set -o pipefail
+
+NAME=${NAME:?}
+
+ID=$(docker ps --filter name="${NAME}-control-plane" --quiet)
+PORT=$(docker inspect ${ID} | jq -r '.[].HostConfig.PortBindings["31390/tcp"][0].HostPort')
+
+TMP=$(mktemp)
+kubectl --context "kind-${NAME}" get secret ingressgateway -n istio-system -o json \
+  | jq -r '.data["ca.crt"]' \
+  | base64 --decode \
+  > ${TMP}
+
+curl $@ \
+  --cacert ${TMP} \
+  --connect-to nginx.example.com:443:localhost:${PORT} \
+  --output /dev/null \
+  --silent \
+  --write-out "%{http_code}\n" \
+    https://nginx.example.com

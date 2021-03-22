@@ -1,0 +1,4 @@
+#!/bin/bash -eux
+
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.8/samples/addons/prometheus.yaml
+kubectl rollout status deployment prometheus --timeout 3m

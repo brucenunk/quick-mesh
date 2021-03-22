@@ -1,0 +1,70 @@
+#!/bin/bash -eux
+set -o pipefail
+
+TOK=root
+VAULT=http://localhost:8200
+
+# enable pki endpoint.
+curl \
+  --data '{"type":"pki"}' \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/sys/mounts/pki_int
+
+# tune max lease to 1 year.
+curl \
+  --data '{"max_lease_ttl":"43800h"}' \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/sys/mounts/pki_int/tune
+
+# generate intermediate ca.
+TMP=$(mktemp)
+cat <<EOF > ${TMP}
+{
+  "common_name": "example.com intermediate"
+}
+EOF
+
+curl \
+  --data "@${TMP}" \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/pki_int/intermediate/generate/internal \
+    | jq -r '.data.csr' > intermediate.csr
+
+# sign csr.
+TMP=$(mktemp)
+cat <<EOF > ${TMP}
+{
+  "csr": "$(cat intermediate.csr | sed ':a;N;$!ba;s/\n/\\n/g')",
+  "format": "pem_bundle",
+  "ttl": "87600h"
+}
+EOF
+
+curl \
+  --data "@${TMP}" \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/pki/root/sign-intermediate \
+    | jq -r '.data.certificate' > intermediate.crt
+
+# set intermediate.
+TMP=$(mktemp)
+cat <<EOF > ${TMP}
+{
+  "certificate": "$(cat intermediate.crt | sed ':a;N;$!ba;s/\n/\\n/g')"
+}
+EOF
+
+curl \
+  --data "@${TMP}" \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/pki_int/intermediate/set-signed

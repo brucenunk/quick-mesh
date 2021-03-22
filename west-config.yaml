@@ -1,0 +1,23 @@
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+kubeadmConfigPatches:
+- |
+  kind: ClusterConfiguration
+  metadata:
+    name: config
+  apiServer:
+    extraArgs:
+      "service-account-api-audiences": "api,vault,factors"
+      "service-account-issuer": "api"
+      "service-account-key-file": "/etc/kubernetes/pki/sa.pub"
+      "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+networking:
+  podSubnet: "10.245.0.0/16"
+  serviceSubnet: "10.97.0.0/12"
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # istio ingressgateway.
+      - containerPort: 31390
+        hostPort: 8444
+        listenAddress: 127.0.0.1

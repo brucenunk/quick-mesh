@@ -1,0 +1,24 @@
+#!/bin/bash -eux
+set -o pipefail
+
+TOK=root
+VAULT=http://localhost:8200
+
+# create role to use pki endpoint.
+TMP=$(mktemp)
+cat <<EOF > ${TMP}
+{
+  "allow_subdomains": true,
+  "allowed_domains": "example.com",
+  "max_ttl": "720h",
+  "require_cn": false
+}
+EOF
+
+curl \
+  --data "@${TMP}" \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/pki_int/roles/example \
+    | jq

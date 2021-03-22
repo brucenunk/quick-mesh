@@ -1,0 +1,9 @@
+#!/bin/bash -eu
+set -o pipefail
+
+TAG=$(grep tag operator.yaml | cut -d: -f2 | tr -d ' ')
+
+docker run --rm \
+  --volume "$(pwd):/work:ro" \
+  istio/istioctl:${TAG} \
+    manifest generate --filename /work/operator.yaml

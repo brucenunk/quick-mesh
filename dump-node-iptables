@@ -1,0 +1,7 @@
+#!/bin/bash -eux
+set -o pipefail
+
+NAME=${1:-kind-control-plane}
+ID=$(docker ps --filter name="${NAME}" --quiet)
+
+docker exec ${ID} iptables-save

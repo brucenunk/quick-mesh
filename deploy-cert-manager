@@ -1,0 +1,8 @@
+#!/bin/bash -eux
+set -o pipefail
+
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.1.0/cert-manager.yaml
+
+for name in $(kubectl get deployments -n cert-manager -o name); do
+  kubectl rollout status ${name} -n cert-manager --timeout 2m
+done

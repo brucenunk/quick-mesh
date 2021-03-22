@@ -1,0 +1,53 @@
+#!/bin/bash -eux
+set -o pipefail
+
+cat <<TMP | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned
+  namespace: istio-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ingressgateway
+  namespace: istio-system
+spec:
+  secretName: ingressgateway
+  duration: 1h1s
+  renewBefore: 5m1s
+  subject:
+    organizations:
+    - jetstack
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - example.com
+  - "*.example.com"
+  issuerRef:
+    name: selfsigned
+    kind: Issuer
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ingressgateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        name: https
+        number: 443
+        protocol: HTTPS
+      hosts:
+        - "*"
+      tls:
+        credentialName: ingressgateway
+        mode: SIMPLE
+TMP

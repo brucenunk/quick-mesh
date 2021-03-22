@@ -1,0 +1,59 @@
+#!/bin/bash -eux
+set -o pipefail
+
+TOK=root
+VAULT=http://localhost:8200
+
+# enable pki endpoint.
+curl \
+  --data '{"type":"pki"}' \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/sys/mounts/pki
+
+# tune max lease to 1 year.
+curl \
+  --data '{"max_lease_ttl":"87600h"}' \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/sys/mounts/pki/tune
+
+# generate root ca.
+TMP=$(mktemp)
+cat <<EOF > ${TMP}
+{
+  "common_name": "example.com",
+  "ttl": "87600h"
+}
+EOF
+
+curl \
+  --header "X-Vault-Token: ${TOK}" \
+  --request DELETE \
+  ${VAULT}/v1/pki/root
+
+curl \
+  --data "@${TMP}" \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/pki/root/generate/internal \
+    | jq -r '.data.certificate' > ca.crt
+
+# configure ca and crl urls.
+TMP=$(mktemp)
+cat <<EOF > ${TMP}
+{
+  "crl_distribution_points": "${VAULT}/v1/pki/crl",
+  "issuing_certificates": "${VAULT}/v1/pki/ca"
+}
+EOF
+
+curl \
+  --data "@${TMP}" \
+  --header "X-Vault-Token: ${TOK}" \
+  --request POST \
+  --silent \
+  ${VAULT}/v1/pki/config/urls

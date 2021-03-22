@@ -1,0 +1,68 @@
+#!/bin/bash -eux
+set -o pipefail
+
+cat <<TMP | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    istio.io/rev: koala
+  name: nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+  namespace: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginxinc/nginx-unprivileged:alpine
+          ports:
+            - containerPort: 8080
+      terminationGracePeriodSeconds: 0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+  namespace: nginx
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  selector:
+    app: nginx
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+  namespace: nginx
+spec:
+  gateways:
+    - istio-system/ingressgateway
+  hosts:
+    - nginx.example.com
+  http:
+    - route:
+        - destination:
+            host: nginx.nginx.svc.cluster.local
+TMP
+
+kubectl rollout status deployment nginx -n nginx --timeout 2m

@@ -1,0 +1,13 @@
+#!/bin/bash -eux
+set -o pipefail
+
+NAME=${1:?}
+
+if ! command -v kind &> /dev/null || [ "$(kind version --quiet)" != "0.10.0" ]; then
+  GO111MODULE="on" go get "sigs.k8s.io/kind@v0.10.0"
+fi
+
+kind create cluster \
+  --config "${NAME}-config.yaml" \
+  --name ${NAME} \
+  --wait 2m

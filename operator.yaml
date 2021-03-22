@@ -1,0 +1,25 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  revision: koala
+  tag: 1.9.1
+
+  components:
+    cni:
+      enabled: true
+
+    ingressGateways:
+    - name: istio-ingressgateway
+      k8s:
+        service:
+          ports:
+          - name: https
+            nodePort: 31390
+            port: 443
+            targetPort: 8443
+
+  meshConfig:
+    accessLogEncoding: JSON
+    accessLogFile: /dev/stdout
+    outboundTrafficPolicy:
+      mode: REGISTRY_ONLY
